@@ -3,34 +3,57 @@ import './App.css'
 import { ChatPanel } from '@/components/ChatPanel'
 import { ActionsPanel } from '@/components/ActionsPanel'
 import { Message, Action } from '@/types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import axios from 'axios'
+
+const API_URL = 'http://127.0.0.1:5000/api'
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [actions, setActions] = useState<Action[]>([])
+  const queryClient = useQueryClient()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Fetch chat history
+  const { data: historyData } = useQuery({
+    queryKey: ['chatHistory'],
+    queryFn: async () => {
+      const response = await axios.get(`${API_URL}/history`)
+      return response.data.history as Message[]
+    }
+  })
+
+  const messages = historyData || []
+
+  // Send message mutation
+  const chatMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const response = await axios.post(`${API_URL}/chat`, { message })
+      return response.data
+    },
+    onSuccess: () => {
+      // Invalidate and refetch chat history
+      queryClient.invalidateQueries({ queryKey: ['chatHistory'] })
+    }
+  })
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim()) return
 
-    // Add user message
-    setMessages(prev => [...prev, { role: 'user', content: input }])
-    
-    // Simulate AI response (replace with actual API call)
-    setTimeout(() => {
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'This is a sample response.' 
-      }])
+    try {
+      await chatMutation.mutateAsync(input)
+      
       // Simulate an action being triggered
       setActions(prev => [...prev, {
         type: 'ANALYZE',
         description: 'Analyzing legal document',
         status: 'pending'
       }])
-    }, 1000)
 
-    setInput('')
+      setInput('')
+    } catch (error) {
+      console.error('Error sending message:', error)
+    }
   }
 
   return (
