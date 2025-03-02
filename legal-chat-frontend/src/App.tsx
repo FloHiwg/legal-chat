@@ -2,16 +2,21 @@ import { useState } from 'react'
 import './App.css'
 import { ChatPanel } from '@/components/ChatPanel'
 import { ActionsPanel } from '@/components/ActionsPanel'
-import { Action } from '@/types'
+import { DataCollectionForm } from '@/components/DataCollectionForm'
+import { Action, ChatResponse } from '@/types'
 import { useChatHistory, useSendMessage } from '@/hooks/useChat'
+import { useSubmitUserData } from './hooks/useUserData'
+
 
 function App() {
   const [input, setInput] = useState('')
   const [actions, setActions] = useState<Action[]>([])
+  const [dataCollectionFields, setDataCollectionFields] = useState<Record<string, string> | null>(null)
 
   // Use the extracted hooks
   const { data: historyData } = useChatHistory()
   const chatMutation = useSendMessage()
+  const submitDataMutation = useSubmitUserData()
 
   const messages = historyData || []
 
@@ -20,14 +25,11 @@ function App() {
     if (!input.trim()) return
 
     try {
-      await chatMutation.mutateAsync(input)
+      const response: ChatResponse = await chatMutation.mutateAsync(input)
       
-      // Simulate an action being triggered
-      setActions(prev => [...prev, {
-        type: 'ANALYZE',
-        description: 'Analyzing legal document',
-        status: 'pending'
-      }])
+      if (response.type === 'data_collection') {
+        setDataCollectionFields(response.required_fields || {})
+      }
 
       setInput('')
     } catch (error) {
@@ -35,15 +37,32 @@ function App() {
     }
   }
 
+  const handleDataSubmit = async (data: Record<string, string>) => {
+    try {
+      await submitDataMutation.mutateAsync(data)
+      setDataCollectionFields(null)
+    } catch (error) {
+      console.error('Error submitting data:', error)
+    }
+  }
+
   return (
     <div className="flex h-screen p-4 gap-4">
       <div className="flex-1">
-        <ChatPanel
-          messages={messages}
-          input={input}
-          setInput={setInput}
-          onSubmit={handleSubmit}
-        />
+        {dataCollectionFields ? (
+          <DataCollectionForm
+            fields={dataCollectionFields}
+            onSubmit={handleDataSubmit}
+            onCancel={() => setDataCollectionFields(null)}
+          />
+        ) : (
+          <ChatPanel
+            messages={messages}
+            input={input}
+            setInput={setInput}
+            onSubmit={handleSubmit}
+          />
+        )}
       </div>
       <div className="flex-1">
         <ActionsPanel actions={actions} />

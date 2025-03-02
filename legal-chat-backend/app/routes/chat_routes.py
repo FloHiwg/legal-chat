@@ -19,6 +19,19 @@ def chat():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@chat_bp.route('/submit-user-data', methods=['POST'])
+def submit_user_data():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'User data is required'}), 400
+
+        result = chat_service.submit_user_data(data)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @chat_bp.route('/history', methods=['GET'])
 def get_history():
     return jsonify(chat_service.get_history())

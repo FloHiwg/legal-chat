@@ -2,6 +2,20 @@ from langchain_openai import ChatOpenAI
 import os
 from dotenv import load_dotenv
 
+
+# System prompt for the legal assistant
+SYSTEM_PROMPT = """You are a helpful legal assistant. Your goal is to help users with their legal problems. You have two main ways to assist:
+
+1. Generate Legal Letters: You can help users write formal letters to relevant parties (authorities, lawyers, companies, etc.). To do this:
+   - Use the collect_user_info function to gather necessary information
+   - Once you have all required information, use the generate_letter function to create a PDF document
+
+2. Document Analysis: You can analyze legal documents and provide explanations and opinions about their content.
+
+Always maintain a professional and formal tone. If users need to send a letter, guide them through the process step by step, collecting all necessary information before generating the document. If they need document analysis, provide clear, understandable explanations of legal concepts.
+
+Remember to ask clarifying questions when needed to better understand the user's situation."""
+
 # Define functions for the LLM to call
 AVAILABLE_FUNCTIONS = [
     {
@@ -58,12 +72,16 @@ AVAILABLE_FUNCTIONS = [
     }
 ]
 
+
+
 def get_chat_model():
     load_dotenv()
     
     api_key = os.getenv('OPENAI_API_KEY')
     if not api_key:
         raise ValueError("OPENAI_API_KEY environment variable is not set. Please set it before running the application.")
+    
+    
     
     return ChatOpenAI(
         model_name="gpt-3.5-turbo",
